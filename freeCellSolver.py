@@ -156,6 +156,7 @@ def run_test_cases(
     start_index=0,
     end_index=None,
     step_by_step_solution=False,
+    print_solution=False,
     max_states=1e6,
     move_depth=1,
 ):
@@ -200,12 +201,18 @@ def run_test_cases(
             solved_count += 1
             visited_counts.append(visited_count)
             success_lengths.append(len(path))
-        if step_by_step_solution:
+        if step_by_step_solution and path:
             for move in path:
                 initial_state = initial_state.apply_move(move)
                 print(move)
                 print(initial_state.pretty_print())
                 input("Press Enter for next move...")
+                print()
+        if print_solution and path:
+            for move in path:
+                initial_state = initial_state.apply_move(move)
+                print(move)
+                print(initial_state.pretty_print())
                 print()
     print(f"Solved {solved_count}/{end_index-start_index} test cases.")
     print(f"Average solution length: {round(sum(success_lengths) / solved_count)}")
@@ -266,7 +273,13 @@ def try_random_states(
     print(f"{len(failed_states)} failed states.")
 
 
-run_test_cases(start_index=0, end_index=1, step_by_step_solution=True, max_states=3e5)
+run_test_cases(
+    start_index=0,
+    end_index=1,
+    step_by_step_solution=False,
+    print_solution=True,
+    max_states=3e5,
+)
 try_random_states(
     number_of_tests=0, max_states=1e6, print_test_case_state_threshold=1e4
 )
