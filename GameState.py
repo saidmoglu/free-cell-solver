@@ -133,20 +133,11 @@ class GameState:
             if self.can_move_to_foundation(card):
                 moves.append(("temp_to_foundation", card))
 
-        # Tableau to Tableau moves
-        for i, pile_from in enumerate(self.tableau):
-            if not pile_from:
-                continue
-            card = pile_from[-1]
-            for j, pile_to in enumerate(self.tableau):
-                if i != j and self.can_place(card, pile_to):
-                    moves.append(("tableau_to_tableau", i, j))
-
         # Tableau to Tableu move multiple cards at once if the cards being moved are in proper order,
         # and the top card being moved can be moved to the destination pile.
         # If temp has x empty spots, you can move x+1 cards at once.
-        # If one of the piles other than the one we move from/to is empty, we can move x*2 cards.
-        temp_allowed = self.max_temp_slots - len(self.temp_slots)
+        # If one of the piles other than the one we move from/to is empty, we can move (x+1)*2 cards.
+        temp_allowed = self.max_temp_slots - len(self.temp_slots) + 1
         for i, pile_from in enumerate(self.tableau):
             if not pile_from or len(pile_from) == 1:
                 continue
@@ -172,6 +163,15 @@ class GameState:
                                     len(pile_from) - j,
                                 )
                             )
+
+        # Tableau to Tableau moves
+        for i, pile_from in enumerate(self.tableau):
+            if not pile_from:
+                continue
+            card = pile_from[-1]
+            for j, pile_to in enumerate(self.tableau):
+                if i != j and self.can_place(card, pile_to):
+                    moves.append(("tableau_to_tableau", i, j))
 
         # Temp to Tableau moves
         for card in sorted(self.temp_slots):
@@ -273,29 +273,19 @@ class GameState:
             auto_moves = self.auto_foundation_moves()
         return self, path
 
-    def heuristic(self):
+    def heuristic(self, power_factor=0):
         """Heuristic function: For each pile, compute a score for how well ordered it is.
         If it goes from large numbers to smaller numbers, it is a good case.
         If the number increases or stays the same, it is a bad case. Cost is how bad it is.
         Also, free slots and free columns are good, but subtracting them from the cost lead to longer search.
         """
-        # Best formula so far, it finds a solution within 1e6 states.
-        # cost = 0
-        # for pile in self.tableau:
-        #     for i in range(len(pile) - 1):
-        #         card = pile[i]
-        #         cost += sum(
-        #             1 for j in range(i + 1, len(pile)) if card.value < pile[j].value
-        #         )
-        # Modified above formula, it is generally 2-3x quicker but in some rare cases
-        # it is much slower.
         cost = 0
         for pile in self.tableau:
             for i in range(len(pile) - 1):
                 card = pile[i]
                 cost += sum(
                     1 for j in range(i + 1, len(pile)) if card.value < pile[j].value
-                ) * (self.max_value - card.value)
+                ) * pow(self.max_value - card.value, power_factor)
 
         # This formula is my earlier attempt. Much slower but still finds a solution.
         # cost = 0

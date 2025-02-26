@@ -27,7 +27,8 @@ def generate_random_initial_state(max_value=13, num_piles=8, max_temp_slots=4):
     )
 
 
-def a_star_search(initial_state, max_states=None):
+def a_star_search(initial_state, max_states=None, heuristic_power_factor=0):
+    print(f"Exploring with heuristic power factor {heuristic_power_factor}")
     visited = set()
     priority_queue = []
     counter = count()  # A counter to ensure no direct comparison between states
@@ -36,7 +37,13 @@ def a_star_search(initial_state, max_states=None):
     initial_state, path_add = initial_state.apply_auto_foundation_moves()
     path.extend(path_add)
     heapq.heappush(
-        priority_queue, (initial_state.heuristic(), next(counter), initial_state, path)
+        priority_queue,
+        (
+            initial_state.heuristic(heuristic_power_factor),
+            next(counter),
+            initial_state,
+            path,
+        ),
     )
 
     visited.add(hash(initial_state))
@@ -63,7 +70,7 @@ def a_star_search(initial_state, max_states=None):
             heapq.heappush(
                 priority_queue,
                 (
-                    new_state.heuristic(),
+                    new_state.heuristic(heuristic_power_factor),
                     next(counter),
                     new_state,
                     new_path,
@@ -83,12 +90,17 @@ def a_star_search(initial_state, max_states=None):
     return None, None
 
 
-def depth_a_star_search(initial_state, move_depth=1, max_states=None):
+def depth_a_star_search(
+    initial_state, move_depth=1, max_states=None, heuristic_power_factor=0
+):
     """
     A* search extended to a fixed depth. We explore all states up to a certain depth, compute the heuristic for each state,
     and add them to the priority queue. We continue to explore the states with the lowest heuristic until we reach the goal.
     Depth set to 1 is equivalent to regular A* search above.
     """
+    print(
+        f"Exploring depth {move_depth} with heuristic power factor {heuristic_power_factor}"
+    )
     visited = set()
     priority_queue = []
     counter = count()  # A counter to ensure no direct comparison between states
@@ -97,7 +109,13 @@ def depth_a_star_search(initial_state, move_depth=1, max_states=None):
     initial_state, path_add = initial_state.apply_auto_foundation_moves()
     path.extend(path_add)
     heapq.heappush(
-        priority_queue, (initial_state.heuristic(), next(counter), initial_state, path)
+        priority_queue,
+        (
+            initial_state.heuristic(heuristic_power_factor),
+            next(counter),
+            initial_state,
+            path,
+        ),
     )
 
     visited.add(hash(initial_state))
@@ -138,7 +156,7 @@ def depth_a_star_search(initial_state, move_depth=1, max_states=None):
             heapq.heappush(
                 priority_queue,
                 (
-                    state.heuristic(),
+                    state.heuristic(heuristic_power_factor),
                     next(counter),
                     state,
                     path,
@@ -193,19 +211,25 @@ def run_test_cases(
         print(initial_state.pretty_print())
         if step_by_step_solution:
             input("Press Enter to start solving...")
-        # path, visited_count = a_star_search(initial_state, max_states)
-        path, visited_count = depth_a_star_search(
-            initial_state, move_depth=move_depth, max_states=max_states
-        )
+        for power_factor in range(0, 3):
+            path, visited_count = depth_a_star_search(
+                initial_state,
+                move_depth=move_depth,
+                max_states=max_states,
+                heuristic_power_factor=power_factor,
+            )
+            if path:
+                break
         if path:
             solved_count += 1
             visited_counts.append(visited_count)
             success_lengths.append(len(path))
+        sol_state = copy.deepcopy(initial_state)
         if step_by_step_solution and path:
             for move in path:
-                initial_state = initial_state.apply_move(move)
+                sol_state = sol_state.apply_move(move)
                 print(move)
-                print(initial_state.pretty_print())
+                print(sol_state.pretty_print())
                 input("Press Enter for next move...")
                 print()
         if print_solution and path:
@@ -215,11 +239,12 @@ def run_test_cases(
                 print(initial_state.pretty_print())
                 print()
     print(f"Solved {solved_count}/{end_index-start_index} test cases.")
-    print(f"Average solution length: {round(sum(success_lengths) / solved_count)}")
-    print(f"Max solution length: {max(success_lengths)}")
-    print(f"Average visited states: {round(sum(visited_counts) / solved_count)}")
-    print(f"Max visited states: {max(visited_counts)}")
-    print(f"visited_counts: {visited_counts}")
+    if solved_count > 0:
+        print(f"Average solution length: {round(sum(success_lengths) / solved_count)}")
+        print(f"Max solution length: {max(success_lengths)}")
+        print(f"Average visited states: {round(sum(visited_counts) / solved_count)}")
+        print(f"Max visited states: {max(visited_counts)}")
+        print(f"visited_counts: {visited_counts}")
     print(f"Elapsed time: {time.time() - start_time:.2f} seconds")
 
 
@@ -275,10 +300,10 @@ def try_random_states(
 
 run_test_cases(
     start_index=0,
-    end_index=1,
+    end_index=None,
     step_by_step_solution=False,
-    print_solution=True,
-    max_states=3e5,
+    print_solution=False,
+    max_states=1e5,
 )
 try_random_states(
     number_of_tests=0, max_states=1e6, print_test_case_state_threshold=1e4

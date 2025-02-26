@@ -14,6 +14,28 @@ class TestCase:
 test_cases = [
     TestCase(
         values="""
+9 6 4 1 5 4 13
+11 11 11 7 6 1 4
+1 8 1 2 13 13 7
+13 10 9 8 11 12 3
+10 4 2 5 3 6
+3 12 5 12 12 7
+9 5 7 6 3 10
+2 8 8 10 2 9
+""",
+        suits="""
+DSDHCHH
+HCSSDCS
+DDSHCDH
+SSSHDDH
+CCSDSH
+CCSSHD
+HHCCDD
+CCSHDC
+""",
+    ),
+    TestCase(
+        values="""
 7 12 9 2 12 8 12
 4 1 7 10 9 9 8
 1 5 11 1 10 10 6
