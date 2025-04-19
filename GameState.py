@@ -287,15 +287,7 @@ class GameState:
                     1 for j in range(i + 1, len(pile)) if card.value < pile[j].value
                 ) * pow(self.max_value - card.value, power_factor)
 
-        # This formula is my earlier attempt. Much slower but still finds a solution.
-        # cost = 0
-        # for pile in self.tableau:
-        #     for i in range(len(pile) - 1):
-        #         card = pile[i]
-        #         if card.value <= max([c.value for c in pile[i + 1 :]]):
-        #             cost += max([c.value for c in pile[i + 1 :]]) + len(pile[i + 1 :])
-
-        # These make sense but they don't really work.
+        # These make sense but they don't really help.
         free_slots = self.max_temp_slots - len(
             self.temp_slots
         )  # Number of free temp slots

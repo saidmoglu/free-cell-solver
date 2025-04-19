@@ -107,6 +107,9 @@ def depth_a_star_search(
 
     path = []
     initial_state, path_add = initial_state.apply_auto_foundation_moves()
+    # print(initial_state.pretty_print())
+    # print(f"heuristic: {initial_state.heuristic(heuristic_power_factor)}")
+    # print()
     path.extend(path_add)
     heapq.heappush(
         priority_queue,
@@ -162,6 +165,10 @@ def depth_a_star_search(
                     path,
                 ),
             )
+            # print(state.pretty_print())
+            # print(f"heuristic: {state.heuristic(heuristic_power_factor)}")
+            # print()
+        # input("Press Enter to continue...")
         if max_states and len(visited) >= max_states:
             print("Max states reached.")
             break
@@ -300,10 +307,10 @@ def try_random_states(
 
 run_test_cases(
     start_index=0,
-    end_index=None,
+    end_index=1,
     step_by_step_solution=False,
-    print_solution=False,
-    max_states=1e5,
+    print_solution=True,
+    max_states=1e6,
 )
 try_random_states(
     number_of_tests=0, max_states=1e6, print_test_case_state_threshold=1e4
