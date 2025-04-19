@@ -274,9 +274,9 @@ class GameState:
         return self, path
 
     def heuristic(self, power_factor=0):
-        """Heuristic function: For each pile, compute a score for how well ordered it is.
-        If it goes from large numbers to smaller numbers, it is a good case.
-        If the number increases or stays the same, it is a bad case. Cost is how bad it is.
+        """Heuristic function: penalizes piles where smaller valued cards are blocked by larger valued cards.
+        The penalty is scaled by how small the blocked card's value is: an Ace blocked by 5 cards is more costly
+        than a 10 blocked by 5 cards. power_factor further controls how much this penalty is scaled.
         Also, free slots and free columns are good, but subtracting them from the cost lead to longer search.
         """
         cost = 0
