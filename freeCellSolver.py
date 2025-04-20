@@ -1,6 +1,7 @@
 import time
 import copy
 import heapq
+from tqdm import tqdm
 from itertools import count
 from freecell_test_cases import test_cases
 from Card import Card
@@ -28,7 +29,7 @@ def generate_random_initial_state(max_value=13, num_piles=8, max_temp_slots=4):
 
 
 def a_star_search(initial_state, max_states=None, heuristic_power_factor=0):
-    print(f"Exploring with heuristic power factor {heuristic_power_factor}")
+    # print(f"Exploring with heuristic power factor {heuristic_power_factor}")
     visited = set()
     priority_queue = []
     counter = count()  # A counter to ensure no direct comparison between states
@@ -58,10 +59,10 @@ def a_star_search(initial_state, max_states=None, heuristic_power_factor=0):
             new_state, path_add = new_state.apply_auto_foundation_moves()
             new_path.extend(path_add)
             if new_state.is_goal():
-                print("Solution found!")
-                print(f"Visited {len(visited)} states")
-                print(f"Solution length: {len(new_path)}")
-                print()
+                # print("Solution found!")
+                # print(f"Visited {len(visited)} states")
+                # print(f"Solution length: {len(new_path)}")
+                # print()
                 return new_path, len(visited)
             state_hash = hash(new_state)
             if state_hash in visited:
@@ -77,12 +78,12 @@ def a_star_search(initial_state, max_states=None, heuristic_power_factor=0):
                 ),
             )
 
-            if len(visited) % 10000 == 0:
-                print(
-                    f"Visited {len(visited)} states. Queue size: {len(priority_queue)}"
-                )
-                if len(visited) % 100000 == 0:
-                    print(state.pretty_print())
+            # if len(visited) % 10000 == 0:
+            #     print(
+            #         f"Visited {len(visited)} states. Queue size: {len(priority_queue)}"
+            #     )
+            #     if len(visited) % 100000 == 0:
+            #         print(state.pretty_print())
         if max_states and len(visited) >= max_states:
             print("Max states reached.")
             break
@@ -90,7 +91,6 @@ def a_star_search(initial_state, max_states=None, heuristic_power_factor=0):
     return None, None
 
 
-# Run the cases from test_cases imported.
 def run_test_cases(
     start_index=0,
     end_index=None,
@@ -107,7 +107,7 @@ def run_test_cases(
     solved_count = 0
     success_lengths = []
     visited_counts = []
-    for test_case in test_cases[start_index:end_index]:
+    for test_case in tqdm(test_cases[start_index:end_index]):
         initial_tableau = []
         suits = test_case.suits.strip().split("\n")
         values = [r.split() for r in test_case.values.strip().split("\n")]
@@ -129,7 +129,7 @@ def run_test_cases(
         )
 
         assert initial_state.validate_tableau()
-        print(initial_state.pretty_print())
+        # print(initial_state.pretty_print())
         if step_by_step_solution:
             input("Press Enter to start solving...")
 
@@ -182,9 +182,9 @@ def try_random_states(
     successful_states = []
     success_lengths = []
     visited_counts = []
-    for i in range(number_of_tests):
+    for i in tqdm(range(number_of_tests)):
         initial_state = generate_random_initial_state()
-        print(initial_state.pretty_print())
+        # print(initial_state.pretty_print())
         solution, visited_count = a_star_search(initial_state, max_states)
         if solution:
             successful_states.append(initial_state)
@@ -193,13 +193,13 @@ def try_random_states(
         if not solution:
             failed_states.append(initial_state)
     print()
-    print(
-        f"Successful states with more than {print_test_case_state_threshold} visited states:"
-    )
-    for i, state in enumerate(successful_states):
-        if visited_counts[i] > print_test_case_state_threshold:
-            state.print_tableau_as_test_case()
-    print()
+    # print(
+    #     f"Successful states with more than {print_test_case_state_threshold} visited states:"
+    # )
+    # for i, state in enumerate(successful_states):
+    #     if visited_counts[i] > print_test_case_state_threshold:
+    #         state.print_tableau_as_test_case()
+    # print()
     print(f"{len(failed_states)} failed states:")
     for state in failed_states:
         state.print_tableau_as_test_case()
@@ -216,22 +216,15 @@ def try_random_states(
     print(f"{len(failed_states)} failed states.")
 
 
+print("Running test cases with power factor 0.5")
 run_test_cases(
     start_index=0,
-    end_index=10,
+    end_index=None,
     step_by_step_solution=False,
     print_solution=False,
     max_states=None,
-    heuristic_power_factor=1,
-)
-run_test_cases(
-    start_index=0,
-    end_index=10,
-    step_by_step_solution=False,
-    print_solution=False,
-    max_states=None,
-    heuristic_power_factor=2,
+    heuristic_power_factor=0.5,
 )
 try_random_states(
-    number_of_tests=0, max_states=1e6, print_test_case_state_threshold=1e4
+    number_of_tests=0, max_states=None, print_test_case_state_threshold=1e4
 )

@@ -1,5 +1,4 @@
 from collections import Counter
-import copy
 from Card import SUIT_SYMBOLS, Card
 
 
@@ -117,8 +116,14 @@ class GameState:
         return True
 
     def valid_moves(self):
-        """Generate all valid moves from the current state."""
+        """Generate all valid moves from the current state.
+        Optimized for performance."""
         moves = []
+
+        empty_piles = [i for i, pile in enumerate(self.tableau) if not pile]
+        empty_pile_count = len(empty_piles)
+
+        temp_allowed = self.max_temp_slots - len(self.temp_slots) + 1
 
         # Tableau to Foundation moves (high priority)
         for i, pile_from in enumerate(self.tableau):
@@ -129,32 +134,39 @@ class GameState:
                 moves.append(("tableau_to_foundation", i))
 
         # Temp to Foundation moves (high priority)
-        for card in sorted(self.temp_slots):
+        for card in self.temp_slots:
             if self.can_move_to_foundation(card):
                 moves.append(("temp_to_foundation", card))
 
-        # Tableau to Tableu move multiple cards at once if the cards being moved are in proper order,
-        # and the top card being moved can be moved to the destination pile.
-        # If temp has x empty spots, you can move x+1 cards at once.
-        # If one of the piles other than the one we move from/to is empty, we can move (x+1)*2 cards.
-        temp_allowed = self.max_temp_slots - len(self.temp_slots) + 1
-        for i, pile_from in enumerate(self.tableau):
-            if not pile_from or len(pile_from) == 1:
-                continue
-            for j in range(len(pile_from) - 1):
-                this_range = pile_from[j:]
-                if self.proper_order(this_range):
+        # Tableau to Tableau multiple cards moves
+        if empty_pile_count > 0 or temp_allowed > 1:
+            for i, pile_from in enumerate(self.tableau):
+                if not pile_from or len(pile_from) == 1:
+                    continue
+
+                # Calculate max cards we can move based on empty slots
+                max_movable = temp_allowed * (1 + sum(1 for r in empty_piles if r != i))
+
+                # Only check ranges that are within our movable limit
+                for j in range(
+                    max(0, len(pile_from) - max_movable), len(pile_from) - 1
+                ):
+                    this_range = pile_from[j:]
+                    if not self.proper_order(this_range):
+                        continue
+
                     for k, pile_to in enumerate(self.tableau):
+                        if i == k:
+                            continue
+
+                        # Calculate multiplier specific to this destination
                         empty_piles_multiplier = 1 + sum(
-                            1
-                            for r in range(len(self.tableau))
-                            if (r != i and r != k and self.tableau[r] == [])
+                            1 for r in empty_piles if r != i and r != k
                         )
-                        if (
-                            i != k
-                            and self.can_place(this_range[0], pile_to)
-                            and temp_allowed * empty_piles_multiplier >= len(this_range)
-                        ):
+
+                        if self.can_place(
+                            this_range[0], pile_to
+                        ) and temp_allowed * empty_piles_multiplier >= len(this_range):
                             moves.append(
                                 (
                                     "tableau_to_tableau_multiple",
@@ -164,7 +176,7 @@ class GameState:
                                 )
                             )
 
-        # Tableau to Tableau moves
+        # Tableau to Tableau single card moves
         for i, pile_from in enumerate(self.tableau):
             if not pile_from:
                 continue
@@ -174,7 +186,7 @@ class GameState:
                     moves.append(("tableau_to_tableau", i, j))
 
         # Temp to Tableau moves
-        for card in sorted(self.temp_slots):
+        for card in self.temp_slots:
             for j, pile_to in enumerate(self.tableau):
                 if self.can_place(card, pile_to):
                     moves.append(("temp_to_tableau", card, j))
@@ -212,34 +224,49 @@ class GameState:
         )
 
     def apply_move(self, move):
-        """Apply a move to the game state and return a new game state."""
-        new_state = copy.deepcopy(self)
+        """Apply a move to the game state and return a new game state.
+        Optimized to avoid deep copying entirely."""
+        # Create new tableau, foundation, and temp_slots with efficient copying
+        new_tableau = [pile[:] for pile in self.tableau]  # Shallow copy of each pile
+        new_foundation = dict(self.foundation)  # Copy the foundation dictionary
+        new_temp_slots = set(self.temp_slots)  # Copy the temp_slots set
+
+        # Apply the move to the new structures
         if move[0] == "tableau_to_tableau":
             _, from_pile, to_pile = move
-            card = new_state.tableau[from_pile].pop()
-            new_state.tableau[to_pile].append(card)
+            card = new_tableau[from_pile].pop()
+            new_tableau[to_pile].append(card)
         elif move[0] == "tableau_to_tableau_multiple":
             _, from_pile, to_pile, num_cards = move
-            cards_to_move = new_state.tableau[from_pile][-num_cards:]
-            new_state.tableau[from_pile] = new_state.tableau[from_pile][:-num_cards]
-            new_state.tableau[to_pile].extend(cards_to_move)
+            cards_to_move = new_tableau[from_pile][-num_cards:]
+            new_tableau[from_pile] = new_tableau[from_pile][:-num_cards]
+            new_tableau[to_pile].extend(cards_to_move)
         elif move[0] == "tableau_to_foundation":
             _, from_pile = move
-            card = new_state.tableau[from_pile].pop()
-            new_state.foundation[card.suit] = card.value
+            card = new_tableau[from_pile].pop()
+            new_foundation[card.suit] = card.value
         elif move[0] == "tableau_to_temp":
             _, from_pile = move
-            card = new_state.tableau[from_pile].pop()
-            new_state.temp_slots.add(card)
+            card = new_tableau[from_pile].pop()
+            new_temp_slots.add(card)
         elif move[0] == "temp_to_tableau":
             _, card, to_pile = move
-            new_state.temp_slots.remove(card)
-            new_state.tableau[to_pile].append(card)
+            new_temp_slots.remove(card)
+            new_tableau[to_pile].append(card)
         elif move[0] == "temp_to_foundation":
             _, card = move
-            new_state.temp_slots.remove(card)
-            new_state.foundation[card.suit] = card.value
-        return new_state
+            new_temp_slots.remove(card)
+            new_foundation[card.suit] = card.value
+
+        # Create and return a new state with the modified structures
+        return GameState(
+            new_tableau,
+            new_foundation,
+            new_temp_slots,
+            self.max_value,
+            self.num_piles,
+            self.max_temp_slots,
+        )
 
     def foundation_size(self):
         return sum(self.foundation.values())
@@ -273,7 +300,7 @@ class GameState:
             auto_moves = self.auto_foundation_moves()
         return self, path
 
-    def heuristic(self, power_factor=0):
+    def heuristic(self, power_factor=0.0):
         """Heuristic function: penalizes piles where smaller valued cards are blocked by larger valued cards.
         The penalty is scaled by how small the blocked card's value is: an Ace blocked by 5 cards is more costly
         than a 10 blocked by 5 cards. power_factor further controls how much this penalty is scaled.
@@ -287,11 +314,10 @@ class GameState:
                     1 for j in range(i + 1, len(pile)) if card.value < pile[j].value
                 ) * pow(self.max_value - card.value, power_factor)
 
-        # These make sense but they don't really help.
-        free_slots = self.max_temp_slots - len(
-            self.temp_slots
-        )  # Number of free temp slots
-        free_columns = sum(
-            1 for pile in self.tableau if len(pile) == 0
-        )  # Free tableau columns
-        return cost  # - (free_slots + free_columns)
+        # We could consider free slots and columns, but they don't help much
+        # Uncomment if needed:
+        # free_slots = self.max_temp_slots - len(self.temp_slots)
+        # free_columns = sum(1 for pile in self.tableau if len(pile) == 0)
+        # return cost - (free_slots + free_columns)
+
+        return cost
